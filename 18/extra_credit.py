@@ -96,35 +96,48 @@ def neighbours(tile, tiles):
                 if tiles[x1, y1] == 0:
                     if x1 < 0 or y1 < 0:
                         continue
-                    yield d, (x1, y1)
+                    if d == np.sqrt(2):
+                        yield np.array((d, 0, 1)), (x1, y1)
+                    else:
+                        yield np.array((d, int(d), 0)), (x1, y1)
             except IndexError:
                 pass
+
+
+# There is certainly a better way to do this
+# It stores redundant information, but saves computations
+# Element 0 is the element 1 + element 2 * sqrt(2)
+distance_dtype = np.dtype((np.float64, (3,)))
 
 
 def dijkstra(tiles):
     "Search the shortest path using Dijkstra's algorithm"
     M, N = tiles.shape
     pq = PriorityQueue()
-    visited = np.empty([M, N])
+    # For a less regular search space, I'd use a dict.
+    visited = np.empty([M, N], distance_dtype)
     visited.fill(np.inf)
-    show_d = 0.0
+    show_d = 0
     for tile in ((0, y) for y in range(N)):
         if tiles[tile] == 0:
-            visited[tile] = 0
+            visited[tile] = (0, 0, 0)
             pq.add_task(tile)
 
     while pq:
         d, tile = pq.pop_task()
+        dist = visited[tile]
         if d > show_d + 100:
-            show_d = d
-            print('\rDistance traveled:', d, end='')
+            show_d += 100
+            # Keep track of the progress
+            print('\rDistance traveled:', "%d + %d*sqrt(2)" % (dist[1], dist[2]), end='')
         if tile[0] == M - 1:
-            print('\rDistance traveled:', d)
+            print('\rDistance traveled:', "%d + %d*sqrt(2)" % (dist[1], dist[2]))
             return d
         for delta, n in neighbours(tile, tiles):
-            if d + delta < visited[n]:
-                visited[n] = d + delta
-                pq.add_task(n, d + delta)
+            # if this path to the tile is shorter, update its entry in visited
+            if d + delta[0] < visited[n][0]:
+                visited[n] = visited[tile] + delta
+                pq.add_task(n, d + delta[0])
 
 
 def tiles_from_row(row, num_rows):
