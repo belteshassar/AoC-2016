@@ -80,28 +80,27 @@ class PriorityQueue:
             priority, count, task = heappop(self._h)
             if task is not REMOVED:
                 del self._finder[task]
-                return priority, task
+                return task
         raise KeyError('pop from an empty priority queue')
 
+
+NEIGHBOURS = [((np.sqrt(dx**2 + dy**2), abs(abs(dx)-abs(dy)),int(dx*dy!=0)), dx, dy)
+              for dx, dy in product(range(-2, 3), range(-2, 3))
+              if 0.0 < np.sqrt(dx**2 + dy**2) <= 2.0]
 
 
 def neighbours(tile, tiles):
     "Generator that yields the tiles that can be reached from a given tile."
     x, y = tile
-    for dx, dy in product(range(-2, 3), range(-2, 3)):
-        d = np.sqrt(dx**2 + dy**2)
-        if 0.0 < d <= 2.0:
-            x1, y1 = x + dx, y + dy
-            try:
-                if tiles[x1, y1] == 0:
-                    if x1 < 0 or y1 < 0:
-                        continue
-                    if d == np.sqrt(2):
-                        yield np.array((d, 0, 1)), (x1, y1)
-                    else:
-                        yield np.array((d, int(d), 0)), (x1, y1)
-            except IndexError:
-                pass
+    for d, dx, dy in NEIGHBOURS:
+        x1, y1 = x + dx, y + dy
+        try:
+            if tiles[x1, y1] == 0:
+                if x1 < 0 or y1 < 0:
+                    continue
+                yield d, (x1, y1)
+        except IndexError:
+            pass
 
 
 # There is certainly a better way to do this
@@ -121,23 +120,23 @@ def dijkstra(tiles):
     for tile in ((0, y) for y in range(N)):
         if tiles[tile] == 0:
             visited[tile] = (0, 0, 0)
-            pq.add_task(tile)
+            pq.add_task(tile, (0, 0))
 
     while pq:
-        d, tile = pq.pop_task()
+        tile = pq.pop_task()
         dist = visited[tile]
-        if d > show_d + 100:
-            show_d += 100
+        if dist[0] > show_d:
+            show_d += 1000
             # Keep track of the progress
             print('\rDistance traveled:', "%d + %d*sqrt(2)" % (dist[1], dist[2]), end='')
         if tile[0] == M - 1:
             print('\rDistance traveled:', "%d + %d*sqrt(2)" % (dist[1], dist[2]))
-            return d
+            return dist
         for delta, n in neighbours(tile, tiles):
             # if this path to the tile is shorter, update its entry in visited
-            if d + delta[0] < visited[n][0]:
+            if dist[0] + delta[0] < visited[n][0]:
                 visited[n] = visited[tile] + delta
-                pq.add_task(n, d + delta[0])
+                pq.add_task(n, (dist[0] + delta[0] - n[0], -n[0]))
 
 
 def tiles_from_row(row, num_rows):
